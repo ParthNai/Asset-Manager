@@ -171,13 +171,15 @@ export default function TrackingScreen() {
   }
 
   function stopGPS() {
-    try {
-      locationSubRef.current?.remove();
-    } catch (_) {
-      // expo-location subscription removal can throw on web
+    const sub = locationSubRef.current;
+    if (sub != null) {
+      if (typeof (sub as any).remove === "function") {
+        try { (sub as any).remove(); } catch (_) {}
+      } else if (typeof (sub as any).subscription?.remove === "function") {
+        try { (sub as any).subscription.remove(); } catch (_) {}
+      }
     }
     locationSubRef.current = null;
-    // Reset speed to 0 when GPS stops
     currentSpeedRef.current = 0;
     setCurrentSpeed(0);
   }
