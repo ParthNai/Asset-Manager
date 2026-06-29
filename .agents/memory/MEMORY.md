@@ -1,0 +1,1 @@
+- [react-native-maps web bundling](rn-maps-web.md) — must use platform-split files (.native.tsx/.tsx) to prevent Metro web crash; require() inline does NOT work

@@ -57,6 +57,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 - react-native-maps must be pinned to 1.18.0 if added — only version compatible with Expo Go
 - Do NOT add react-native-maps to plugins array in app.json — crashes the app
+- react-native-maps CANNOT be imported from any file Metro bundles for web (even inside Platform.OS guard or try/catch) — use platform-split files: LiveMap.native.tsx (real map) + LiveMap.tsx (stub)
 - Workout simulation uses MET × weight × time formula (weight defaults to profile.weightKg)
 - Restart workflow via `restart_workflow` tool — never run `npx expo start` directly
 

@@ -2,10 +2,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pedometer } from "expo-sensors";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
-  Platform,
+  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,6 +19,10 @@ import { useWorkouts } from "@/context/WorkoutContext";
 import { useProfile } from "@/context/ProfileContext";
 import { WorkoutType, WORKOUT_CONFIGS } from "@/constants/workout";
 import { formatDuration, formatDistance, formatPace } from "@/utils/format";
+import LiveMap from "@/components/LiveMap";
+
+const { height: SCREEN_H } = Dimensions.get("window");
+const MAP_HEIGHT = SCREEN_H * 0.42;
 
 function calcDistanceMeters(
   lat1: number, lon1: number,
@@ -35,6 +39,8 @@ function calcDistanceMeters(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+type Coord = { latitude: number; longitude: number };
+
 export default function TrackingScreen() {
   const { type } = useLocalSearchParams<{ type: WorkoutType }>();
   const colors = useColors();
@@ -50,14 +56,19 @@ export default function TrackingScreen() {
   const [paused, setPaused] = useState(false);
   const [permStatus, setPermStatus] = useState<"pending" | "granted" | "denied">("pending");
 
-  // Real GPS
+  // GPS + route
   const [distanceKm, setDistanceKm] = useState(0);
   const [currentSpeed, setCurrentSpeed] = useState(0);
+  const [routeCoords, setRouteCoords] = useState<Coord[]>([]);
+  const [mapRegion, setMapRegion] = useState<{
+    latitude: number; longitude: number;
+    latitudeDelta: number; longitudeDelta: number;
+  } | null>(null);
   const currentSpeedRef = useRef(0);
   const lastCoordRef = useRef<{ lat: number; lon: number } | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
 
-  // Real step counter
+  // Pedometer
   const [steps, setSteps] = useState(0);
   const pedometerSubRef = useRef<ReturnType<typeof Pedometer.watchStepCount> | null>(null);
   const pedometerAvailable = useRef(false);
@@ -65,51 +76,49 @@ export default function TrackingScreen() {
   // Timer
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
-  const pausedElapsedRef = useRef(0);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const topPad = insets.top;
+  const bottomPad = insets.bottom || 34;
 
-  // Calories only count while actually moving (movingElapsed tracks real movement time)
   const calories = cfg.met * profile.weightKg * (movingElapsed / 3600);
   const pace = movingElapsed > 0 && distanceKm > 0.01 ? movingElapsed / distanceKm : 0;
-  // Speed shows 0 until GPS confirms real movement — no fake fallback
   const displaySpeed = currentSpeed * 3.6;
 
-  // Request permissions on mount, then start tracking
   useEffect(() => {
     requestAndStart();
-    return () => cleanup();
+    return cleanup;
   }, []);
 
   async function requestAndStart() {
-    // --- Location permission ---
-    const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-    if (fgStatus !== "granted") {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
       setPermStatus("denied");
       Alert.alert(
         "Location Required",
-        "Dokra needs location access to track your workout route and calculate real distance. Please enable it in Settings.",
+        "Dokra needs location access to track your workout route.",
         [{ text: "OK", onPress: () => router.back() }]
       );
       return;
     }
-
-    // Request background location (best-effort, not mandatory)
     await Location.requestBackgroundPermissionsAsync().catch(() => {});
-
     setPermStatus("granted");
 
-    // --- Pedometer ---
-    const pedometerOK = await Pedometer.isAvailableAsync().catch(() => false);
-    pedometerAvailable.current = pedometerOK;
-    if (pedometerOK) {
-      pedometerSubRef.current = Pedometer.watchStepCount((result) => {
-        setSteps(result.steps);
-      });
+    // Get initial position to centre the map
+    try {
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = loc.coords;
+      setMapRegion({ latitude, longitude, latitudeDelta: 0.005, longitudeDelta: 0.005 });
+      setRouteCoords([{ latitude, longitude }]);
+      lastCoordRef.current = { lat: latitude, lon: longitude };
+    } catch (_) {}
+
+    // Pedometer
+    const ok = await Pedometer.isAvailableAsync().catch(() => false);
+    pedometerAvailable.current = ok;
+    if (ok) {
+      pedometerSubRef.current = Pedometer.watchStepCount((r) => setSteps(r.steps));
     }
 
-    // --- Start GPS ---
     startTimeRef.current = Date.now();
     startGPS();
     startTimer();
@@ -119,7 +128,6 @@ export default function TrackingScreen() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       setElapsed((e) => e + 1);
-      // Only count calories/pace time when GPS confirmed real movement (> 1 m/s)
       if (currentSpeedRef.current > 1.0) {
         setMovingElapsed((e) => e + 1);
       }
@@ -127,47 +135,35 @@ export default function TrackingScreen() {
   }
 
   function stopTimer() {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
   }
 
   function startGPS() {
     Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.BestForNavigation,
-        timeInterval: 1000,
-        distanceInterval: 2,
-      },
+      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 },
       (loc) => {
         const { latitude, longitude, speed } = loc.coords;
         if (lastCoordRef.current) {
           const meters = calcDistanceMeters(
-            lastCoordRef.current.lat,
-            lastCoordRef.current.lon,
-            latitude,
-            longitude
+            lastCoordRef.current.lat, lastCoordRef.current.lon,
+            latitude, longitude
           );
-          // Real movement: > 2m and < 50m per update (filters GPS drift/noise)
           if (meters > 2 && meters < 50) {
             setDistanceKm((prev) => prev + meters / 1000);
-            // Only update speed when we confirmed real physical movement
+            setRouteCoords((prev) => [...prev, { latitude, longitude }]);
+            setMapRegion({ latitude, longitude, latitudeDelta: 0.005, longitudeDelta: 0.005 });
             if (speed !== null && speed > 0) {
               currentSpeedRef.current = speed;
               setCurrentSpeed(speed);
             }
           } else if (meters <= 2) {
-            // Standing still — zero out the displayed speed
             currentSpeedRef.current = 0;
             setCurrentSpeed(0);
           }
         }
         lastCoordRef.current = { lat: latitude, lon: longitude };
       }
-    ).then((sub) => {
-      locationSubRef.current = sub;
-    });
+    ).then((sub) => { locationSubRef.current = sub; });
   }
 
   function stopGPS() {
@@ -193,28 +189,17 @@ export default function TrackingScreen() {
 
   function handlePause() {
     if (paused) {
-      startTimer();
-      startGPS();
-      setPaused(false);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      startTimer(); startGPS(); setPaused(false);
     } else {
-      stopTimer();
-      stopGPS();
-      lastCoordRef.current = null;
-      setPaused(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      stopTimer(); stopGPS(); lastCoordRef.current = null; setPaused(true);
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
   async function handleStop() {
     cleanup();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    const finalSteps =
-      pedometerAvailable.current
-        ? steps
-        : Math.round(distanceKm * cfg.stepsPerKm);
-
+    const finalSteps = pedometerAvailable.current ? steps : Math.round(distanceKm * cfg.stepsPerKm);
     const workout = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       type: workoutType,
@@ -226,26 +211,19 @@ export default function TrackingScreen() {
       avgPace: pace,
       avgSpeed: displaySpeed,
     };
-
     await addWorkout(workout);
     router.replace({
       pathname: "/summary",
       params: {
-        workoutId: workout.id,
-        type: workoutType,
-        duration: elapsed.toString(),
-        distance: distanceKm.toString(),
-        steps: finalSteps.toString(),
-        calories: calories.toString(),
+        workoutId: workout.id, type: workoutType,
+        duration: elapsed.toString(), distance: distanceKm.toString(),
+        steps: finalSteps.toString(), calories: calories.toString(),
       },
     });
   }
 
   function confirmStop() {
-    if (elapsed < 10) {
-      handleStop();
-      return;
-    }
+    if (elapsed < 10) { handleStop(); return; }
     Alert.alert("Stop Workout?", "Your progress will be saved.", [
       { text: "Cancel", style: "cancel" },
       { text: "Stop & Save", style: "destructive", onPress: handleStop },
@@ -255,11 +233,11 @@ export default function TrackingScreen() {
   // Waiting for permission
   if (permStatus === "pending") {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center", gap: 16 }]}>
+      <View style={[styles.container, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center", gap: 16, padding: 32 }]}>
         <MaterialCommunityIcons name="map-marker-radius" size={52} color={cfg.color} />
-        <Text style={[styles.permTitle, { color: colors.foreground }]}>Requesting Permissions</Text>
+        <Text style={[styles.permTitle, { color: colors.foreground }]}>Requesting GPS</Text>
         <Text style={[styles.permSub, { color: colors.mutedForeground }]}>
-          Dokra needs location access to track your route and distance in real time.
+          Dokra needs location access to track your route and measure real distance.
         </Text>
       </View>
     );
@@ -267,142 +245,70 @@ export default function TrackingScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <LinearGradient
-        colors={[cfg.color + "22", colors.background, colors.background]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.4 }}
+      {/* ── MAP (platform-split: native gets real MapView, web gets stub) ── */}
+      <LiveMap
+        height={MAP_HEIGHT}
+        routeCoords={routeCoords}
+        mapRegion={mapRegion}
+        routeColor={cfg.color}
+        topPad={topPad}
+        cfg={cfg}
+        paused={paused}
+        onClose={confirmStop}
       />
 
-      {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: topPad + 12 }]}>
-        <TouchableOpacity
-          style={[styles.closeBtn, { backgroundColor: colors.card }]}
-          onPress={confirmStop}
-        >
-          <MaterialCommunityIcons name="close" size={20} color={colors.foreground} />
-        </TouchableOpacity>
-        <View style={[styles.typeBadge, { backgroundColor: cfg.color + "22", borderColor: cfg.color + "44" }]}>
-          <MaterialCommunityIcons name={cfg.icon as any} size={16} color={cfg.color} />
-          <Text style={[styles.typeLabel, { color: cfg.color }]}>{cfg.label}</Text>
+      {/* ── STATS + CONTROLS ── */}
+      <View style={styles.statsPanel}>
+        {/* Timer */}
+        <View style={styles.timerRow}>
+          <View>
+            <Text style={[styles.timerLabel, { color: colors.mutedForeground }]}>DURATION</Text>
+            <Text style={[styles.timer, { color: colors.foreground }]}>{formatDuration(elapsed)}</Text>
+          </View>
+          <View style={[styles.liveBadge, { backgroundColor: paused ? colors.muted : "#EF444422" }]}>
+            {!paused && <View style={styles.liveDot} />}
+            <Text style={[styles.liveText, { color: paused ? colors.mutedForeground : "#EF4444" }]}>
+              {paused ? "PAUSED" : "LIVE"}
+            </Text>
+          </View>
         </View>
-        <View style={styles.pauseIndicator}>
-          {paused ? (
-            <View style={[styles.statusBadge, { backgroundColor: colors.time + "22" }]}>
-              <Text style={[styles.statusText, { color: colors.time }]}>PAUSED</Text>
-            </View>
-          ) : (
-            <View style={[styles.statusBadge, { backgroundColor: "#FF444422" }]}>
-              <View style={[styles.liveDot, { backgroundColor: "#FF4444" }]} />
-              <Text style={[styles.statusText, { color: "#FF4444" }]}>LIVE</Text>
-            </View>
+
+        {/* Stats grid */}
+        <View style={styles.statsGrid}>
+          <Metric icon="map-marker-distance" label="Distance" value={formatDistance(distanceKm)} unit="km" color={colors.distance} colors={colors} />
+          <Metric icon="fire" label="Calories" value={Math.round(calories).toString()} unit="kcal" color={colors.calories} colors={colors} />
+          <Metric icon="speedometer" label="Speed" value={displaySpeed.toFixed(1)} unit="km/h" color={colors.primary} colors={colors} />
+          <Metric icon="timer-outline" label="Avg Pace" value={formatPace(pace)} unit="/km" color={colors.time} colors={colors} />
+          {cfg.stepsPerKm > 0 && (
+            <Metric icon="walk" label={pedometerAvailable.current ? "Steps" : "Steps (est.)"} value={(steps || Math.round(distanceKm * cfg.stepsPerKm)).toLocaleString()} unit="" color={colors.steps} colors={colors} />
           )}
         </View>
-      </View>
 
-      {/* Main Timer */}
-      <View style={styles.timerSection}>
-        <Text style={[styles.timerLabel, { color: colors.mutedForeground }]}>Duration</Text>
-        <Text style={[styles.timer, { color: colors.foreground }]}>
-          {formatDuration(elapsed)}
-        </Text>
-      </View>
-
-      {/* Stats Grid */}
-      <View style={styles.statsGrid}>
-        <TrackingMetric
-          label="Distance"
-          value={formatDistance(distanceKm)}
-          unit="km"
-          color={colors.distance}
-          icon="map-marker-distance"
-          colors={colors}
-        />
-        <TrackingMetric
-          label="Calories"
-          value={Math.round(calories).toString()}
-          unit="kcal"
-          color={colors.calories}
-          icon="fire"
-          colors={colors}
-        />
-        <TrackingMetric
-          label="Speed"
-          value={displaySpeed.toFixed(1)}
-          unit="km/h"
-          color={colors.primary}
-          icon="speedometer"
-          colors={colors}
-        />
-        <TrackingMetric
-          label="Avg Pace"
-          value={formatPace(pace)}
-          unit="min/km"
-          color={colors.time}
-          icon="timer-outline"
-          colors={colors}
-        />
-        {(cfg.stepsPerKm > 0 || pedometerAvailable.current) && (
-          <TrackingMetric
-            label={pedometerAvailable.current ? "Steps (sensor)" : "Steps (est.)"}
-            value={steps > 0 ? steps.toLocaleString() : Math.round(distanceKm * cfg.stepsPerKm).toLocaleString()}
-            unit=""
-            color={colors.steps}
-            icon="walk"
-            colors={colors}
-          />
-        )}
-        <TrackingMetric
-          label="GPS"
-          value="Active"
-          unit=""
-          color="#00E676"
-          icon="crosshairs-gps"
-          colors={colors}
-        />
-      </View>
-
-      {/* Controls */}
-      <View style={[styles.controls, { paddingBottom: bottomPad + 24 }]}>
-        <TouchableOpacity
-          style={[styles.controlBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={handlePause}
-        >
-          <MaterialCommunityIcons
-            name={paused ? "play" : "pause"}
-            size={28}
-            color={colors.foreground}
-          />
-          <Text style={[styles.controlLabel, { color: colors.foreground }]}>
-            {paused ? "Resume" : "Pause"}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.stopBtn]}
-          onPress={confirmStop}
-        >
-          <LinearGradient
-            colors={["#FF4444", "#CC0000"]}
-            style={styles.stopGradient}
+        {/* Controls */}
+        <View style={[styles.controls, { paddingBottom: bottomPad + 12 }]}>
+          <TouchableOpacity
+            style={[styles.pauseBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handlePause}
           >
-            <MaterialCommunityIcons name="stop" size={36} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
+            <MaterialCommunityIcons name={paused ? "play" : "pause"} size={24} color={colors.foreground} />
+            <Text style={[styles.pauseLabel, { color: colors.foreground }]}>{paused ? "Resume" : "Pause"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.stopBtn} onPress={confirmStop}>
+            <LinearGradient colors={["#EF4444", "#B91C1C"]} style={styles.stopGrad}>
+              <MaterialCommunityIcons name="stop" size={32} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
 
-function TrackingMetric({
-  label, value, unit, color, icon, colors,
-}: {
-  label: string; value: string; unit: string;
-  color: string; icon: string; colors: any;
-}) {
+
+function Metric({ icon, label, value, unit, color, colors }: any) {
   return (
     <View style={[styles.metric, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <MaterialCommunityIcons name={icon as any} size={16} color={color} />
+      <MaterialCommunityIcons name={icon} size={14} color={color} />
       <Text style={[styles.metricValue, { color: colors.foreground }]}>{value}</Text>
       {!!unit && <Text style={[styles.metricUnit, { color: colors.mutedForeground }]}>{unit}</Text>}
       <Text style={[styles.metricLabel, { color: colors.mutedForeground }]}>{label}</Text>
@@ -413,41 +319,41 @@ function TrackingMetric({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   permTitle: { fontSize: 22, fontWeight: "700", textAlign: "center" },
-  permSub: { fontSize: 15, textAlign: "center", lineHeight: 22, paddingHorizontal: 32 },
+  permSub: { fontSize: 14, textAlign: "center", lineHeight: 22 },
+  webMapPlaceholder: { alignItems: "center", justifyContent: "center" },
   topBar: {
+    position: "absolute", top: 0, left: 0, right: 0,
     flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 20, gap: 12, paddingBottom: 12,
+    paddingHorizontal: 16, gap: 8, paddingBottom: 12,
   },
-  closeBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  closeBtn: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   typeBadge: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20,
   },
-  typeLabel: { fontSize: 13, fontWeight: "600" },
-  pauseIndicator: { flex: 1, alignItems: "flex-end" },
-  statusBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  statusText: { fontSize: 11, fontWeight: "700", letterSpacing: 1 },
-  liveDot: { width: 7, height: 7, borderRadius: 4 },
-  timerSection: { alignItems: "center", paddingTop: 24, paddingBottom: 32, gap: 6 },
-  timerLabel: { fontSize: 14, fontWeight: "500", letterSpacing: 1, textTransform: "uppercase" },
-  timer: { fontSize: 72, fontWeight: "800", letterSpacing: -2, fontVariant: ["tabular-nums"] },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 10 },
+  typeLabel: { fontSize: 12, fontWeight: "600" },
+  statsPanel: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
+  timerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  timerLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 1 },
+  timer: { fontSize: 52, fontWeight: "800", letterSpacing: -1, fontVariant: ["tabular-nums"] },
+  liveBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#EF4444" },
+  liveText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
   metric: {
-    flex: 1, minWidth: "45%", borderRadius: 16, borderWidth: 1,
-    padding: 14, gap: 2, alignItems: "flex-start",
+    flex: 1, minWidth: "44%", borderRadius: 14, borderWidth: 1,
+    padding: 12, gap: 1,
   },
-  metricValue: { fontSize: 24, fontWeight: "700", marginTop: 4 },
-  metricUnit: { fontSize: 12 },
-  metricLabel: { fontSize: 11, fontWeight: "500", marginTop: 2 },
-  controls: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 20, marginTop: "auto", paddingHorizontal: 24,
-  },
-  controlBtn: {
+  metricValue: { fontSize: 20, fontWeight: "700", marginTop: 3 },
+  metricUnit: { fontSize: 11 },
+  metricLabel: { fontSize: 10, fontWeight: "500" },
+  controls: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginTop: "auto" },
+  pauseBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingHorizontal: 20, paddingVertical: 14, borderRadius: 16, borderWidth: 1,
   },
-  controlLabel: { fontSize: 15, fontWeight: "600" },
-  stopBtn: { width: 72, height: 72, borderRadius: 36, overflow: "hidden" },
-  stopGradient: { flex: 1, alignItems: "center", justifyContent: "center" },
+  pauseLabel: { fontSize: 15, fontWeight: "600" },
+  stopBtn: { width: 68, height: 68, borderRadius: 34, overflow: "hidden" },
+  stopGrad: { flex: 1, alignItems: "center", justifyContent: "center" },
 });
+

@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#080810"
+      "backgroundColor": "#F0F4FF"
     },
     "ios": {
       "supportsTablet": false,
@@ -20,7 +20,10 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Dokra uses your location in the background to keep tracking your workout even when your screen is off.",
         "NSLocationAlwaysUsageDescription": "Dokra uses your location in the background to keep tracking your workout even when your screen is off.",
         "NSMotionUsageDescription": "Dokra uses your motion sensors to count your steps and detect your activity type accurately.",
-        "UIBackgroundModes": ["location", "fetch"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ]
       }
     },
     "android": {
@@ -32,7 +35,8 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.RECEIVE_BOOT_COMPLETED"
-      ]
+      ],
+      "package": "com.stgerjr.dokra"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -52,6 +56,21 @@
           "locationWhenInUsePermission": "Dokra uses your location to track your workout route and calculate real distance.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Dokra needs access to your photos to set a workout card background.",
+          "cameraPermission": "Dokra needs camera access to capture workout moments."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Dokra to save your workout share cards to your gallery.",
+          "savePhotosPermission": "Allow Dokra to save photos to your gallery.",
+          "isAccessMediaLocationEnabled": true
         }
       ],
       "expo-font",

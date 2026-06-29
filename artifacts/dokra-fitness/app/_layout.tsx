@@ -21,22 +21,6 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-function RootLayoutNav() {
-  return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="tracking"
-        options={{ headerShown: false, presentation: "fullScreenModal" }}
-      />
-      <Stack.Screen
-        name="summary"
-        options={{ headerShown: false, presentation: "fullScreenModal" }}
-      />
-    </Stack>
-  );
-}
-
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -46,9 +30,7 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
+    if (fontsLoaded || fontError) SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;
@@ -59,9 +41,14 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ProfileProvider>
             <WorkoutProvider>
-              <GestureHandlerRootView>
+              <GestureHandlerRootView style={{ flex: 1 }}>
                 <KeyboardProvider>
-                  <RootLayoutNav />
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen name="tracking" options={{ presentation: "fullScreenModal" }} />
+                    <Stack.Screen name="summary" options={{ presentation: "fullScreenModal" }} />
+                    <Stack.Screen name="share" options={{ presentation: "fullScreenModal" }} />
+                  </Stack>
                 </KeyboardProvider>
               </GestureHandlerRootView>
             </WorkoutProvider>
