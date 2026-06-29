@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "Dokra – Fitness",
-    "slug": "dokra-fitness",
+    "slug": "dokra",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "dokra-fitness",
+    "scheme": "dokra",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
