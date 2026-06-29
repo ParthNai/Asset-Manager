@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -55,6 +56,7 @@ export default function TrackingScreen() {
   const [movingElapsed, setMovingElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [permStatus, setPermStatus] = useState<"pending" | "granted" | "denied">("pending");
+  const [gpsSignal, setGpsSignal] = useState<"acquiring" | "active" | "none">("acquiring");
 
   // GPS + route
   const [distanceKm, setDistanceKm] = useState(0);
@@ -90,29 +92,27 @@ export default function TrackingScreen() {
   }, []);
 
   async function requestAndStart() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
+    // Check existing permission first — avoids pointless re-request
+    let { status } = await Location.getForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      // Ask the user
+      const result = await Location.requestForegroundPermissionsAsync();
+      status = result.status;
+    }
+
     if (status !== "granted") {
       setPermStatus("denied");
-      Alert.alert(
-        "Location Required",
-        "Dokra needs location access to track your workout route.",
-        [{ text: "OK", onPress: () => router.back() }]
-      );
-      return;
+      return; // UI shows denied screen with Settings button
     }
-    await Location.requestBackgroundPermissionsAsync().catch(() => {});
+
+    // Background permission: fire-and-forget, never block on it
+    Location.requestBackgroundPermissionsAsync().catch(() => {});
+
     setPermStatus("granted");
+    setGpsSignal("acquiring");
 
-    // Get initial position to centre the map
-    try {
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const { latitude, longitude } = loc.coords;
-      setMapRegion({ latitude, longitude, latitudeDelta: 0.005, longitudeDelta: 0.005 });
-      setRouteCoords([{ latitude, longitude }]);
-      lastCoordRef.current = { lat: latitude, lon: longitude };
-    } catch (_) {}
-
-    // Pedometer
+    // Pedometer — start immediately, doesn't need GPS
     const ok = await Pedometer.isAvailableAsync().catch(() => false);
     pedometerAvailable.current = ok;
     if (ok) {
