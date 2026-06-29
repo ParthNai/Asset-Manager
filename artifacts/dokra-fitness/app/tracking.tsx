@@ -46,12 +46,14 @@ export default function TrackingScreen() {
   const cfg = WORKOUT_CONFIGS[workoutType];
 
   const [elapsed, setElapsed] = useState(0);
+  const [movingElapsed, setMovingElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [permStatus, setPermStatus] = useState<"pending" | "granted" | "denied">("pending");
 
   // Real GPS
   const [distanceKm, setDistanceKm] = useState(0);
   const [currentSpeed, setCurrentSpeed] = useState(0);
+  const currentSpeedRef = useRef(0);
   const lastCoordRef = useRef<{ lat: number; lon: number } | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
 
@@ -68,10 +70,11 @@ export default function TrackingScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const calories = cfg.met * profile.weightKg * (elapsed / 3600);
-  const pace = elapsed > 0 && distanceKm > 0.01 ? elapsed / distanceKm : 0;
-  const displaySpeed =
-    currentSpeed > 0 ? currentSpeed * 3.6 : cfg.speed;
+  // Calories only count while actually moving (movingElapsed tracks real movement time)
+  const calories = cfg.met * profile.weightKg * (movingElapsed / 3600);
+  const pace = movingElapsed > 0 && distanceKm > 0.01 ? movingElapsed / distanceKm : 0;
+  // Speed shows 0 until GPS confirms real movement — no fake fallback
+  const displaySpeed = currentSpeed * 3.6;
 
   // Request permissions on mount, then start tracking
   useEffect(() => {
@@ -116,6 +119,10 @@ export default function TrackingScreen() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       setElapsed((e) => e + 1);
+      // Only count calories/pace time when actually moving (>0.5 m/s ≈ 1.8 km/h)
+      if (currentSpeedRef.current > 0.5) {
+        setMovingElapsed((e) => e + 1);
+      }
     }, 1000);
   }
 
@@ -136,6 +143,7 @@ export default function TrackingScreen() {
       (loc) => {
         const { latitude, longitude, speed } = loc.coords;
         if (speed !== null && speed >= 0) {
+          currentSpeedRef.current = speed;
           setCurrentSpeed(speed);
         }
         if (lastCoordRef.current) {
