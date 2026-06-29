@@ -1,0 +1,530 @@
+Great choice. Here's a polished Replit prompt with your app name.
+
+---
+
+# Replit AI Prompt
+
+## App Name
+
+# **Dokra – Fitness**
+
+### Tagline
+
+**Track. Improve. Share. Inspire.**
+
+## Project Overview
+
+Build a premium, production-ready cross-platform fitness application called **Dokra – Fitness** for Android, iOS, and Web using **Flutter** and **Firebase**.
+
+The app should provide **real-time fitness tracking** for walking, running, cycling, hiking, and outdoor workouts using live GPS, motion sensors, background location, and activity recognition. It should offer an experience comparable to Strava, Nike Run Club, and Google Fit while having its own unique identity.
+
+The application must be fast, battery-efficient, secure, and visually stunning with smooth animations, modern UI, and cloud synchronization.
+
+---
+
+# Main Features
+
+## Authentication
+
+* Email & Password
+* Google Sign-In
+* Apple Sign-In
+* Phone OTP
+* Guest Mode
+* Forgot Password
+* Secure Firebase Authentication
+
+---
+
+## User Profile
+
+Users can customize:
+
+* Profile Picture
+* Cover Photo
+* Name
+* Username
+* Bio
+* Gender
+* Age
+* Height
+* Weight
+* Fitness Goals
+* Daily Target
+* Weekly Target
+* Country
+* City
+* Achievement Badges
+* Privacy Settings
+
+---
+
+# Activity Modes
+
+Support:
+
+* 🚶 Walking
+* 🏃 Running
+* 🚴 Cycling
+* 🥾 Hiking
+* 🧗 Trekking
+* 🛼 Skating
+* 🛴 Outdoor Ride
+
+---
+
+# Real-Time Fitness Tracking
+
+Use real device sensors and GPS to calculate:
+
+* Live GPS Position
+* Distance
+* Steps
+* Calories Burned
+* Workout Duration
+* Moving Time
+* Rest Time
+* Average Pace
+* Current Pace
+* Average Speed
+* Maximum Speed
+* Elevation Gain
+* Elevation Loss
+* Cadence
+* Heart Rate (if smartwatch connected)
+* Route Accuracy
+* Weather
+* Air Quality
+* Sunrise/Sunset Time
+
+Everything updates live.
+
+---
+
+# Background Tracking
+
+The app must continue recording while:
+
+* Screen is locked
+* User opens another app
+* Phone is in pocket
+* Display is off
+* Device is idle
+
+Use:
+
+* Foreground Services
+* Background Location
+* Activity Recognition
+* Step Counter Sensor
+* Battery Optimization
+
+No workout data should be lost.
+
+---
+
+# Interactive Map
+
+Google Maps integration.
+
+Show:
+
+* Live Position
+* Current Route
+* Start Marker
+* Finish Marker
+* Route Animation
+* Colored Path
+* Distance Markers
+* Total Area Covered
+* Elevation Profile
+* Satellite View
+* Terrain View
+* Dark Mode Map
+
+Allow pinch zoom and route replay.
+
+---
+
+# Live Dashboard
+
+Display:
+
+* Current Distance
+* Steps
+* Calories
+* Speed
+* Average Pace
+* Workout Timer
+* Elevation
+* Heart Rate
+* GPS Accuracy
+* Daily Goal Progress
+
+Use animated circular progress indicators and smooth number animations.
+
+---
+
+# Workout Summary
+
+After finishing an activity, automatically generate a beautiful summary showing:
+
+* Route Map
+* Distance
+* Duration
+* Calories
+* Steps
+* Pace
+* Average Speed
+* Maximum Speed
+* Elevation
+* Weather
+* Achievement Earned
+* Personal Record
+
+---
+
+# Social Sharing
+
+Allow users to create beautiful fitness posters.
+
+Users can:
+
+* Upload their own image
+* Add custom captions
+* Choose poster templates
+* Customize fonts
+* Change colors
+* Add stickers
+* Add fitness badges
+* Overlay statistics
+* Include route map
+
+Share directly to:
+
+* Instagram Story
+* Instagram Feed
+* Facebook
+* WhatsApp
+* X (Twitter)
+* Threads
+* Snapchat
+* Telegram
+* LinkedIn
+* Pinterest
+
+Also allow:
+
+* Save as HD Image
+* Save as PDF
+* Download
+
+---
+
+# AI Performance Poster
+
+Generate premium workout posters similar to Strava.
+
+Themes:
+
+* Neon
+* Glassmorphism
+* Dark
+* Nature
+* Minimal
+* Premium Gold
+* Cyberpunk
+* Gradient
+* Sunset
+* Forest
+
+---
+
+# Activity History
+
+Show:
+
+* Calendar View
+* Daily History
+* Weekly Summary
+* Monthly Summary
+* Yearly Summary
+* Route Replay
+* Statistics
+* Charts
+* Personal Records
+
+---
+
+# Statistics
+
+Beautiful charts for:
+
+* Daily Steps
+* Distance
+* Calories
+* Workout Time
+* Speed
+* Pace
+* Monthly Progress
+* Goal Completion
+
+---
+
+# Fitness Goals
+
+Users can set:
+
+* Daily Steps
+* Daily Distance
+* Daily Calories
+* Weekly Distance
+* Monthly Distance
+* Running Goal
+* Cycling Goal
+
+---
+
+# AI Fitness Coach
+
+AI provides suggestions such as:
+
+* Daily motivation
+* Recovery advice
+* Workout recommendations
+* Goal suggestions
+* Progress insights
+* Personalized challenges
+
+---
+
+# Challenges
+
+Include:
+
+* Daily Challenge
+* Weekly Challenge
+* Monthly Challenge
+* Seasonal Challenge
+* Community Challenge
+* Friend Challenge
+
+---
+
+# Achievements
+
+Unlock badges for:
+
+* First Walk
+* First Run
+* First Ride
+* 10 km
+* 50 km
+* 100 km
+* 500 km
+* 1000 km
+* 10,000 Steps
+* Marathon
+* Half Marathon
+* Cycling Champion
+* Early Bird
+* Night Runner
+* Mountain Climber
+
+---
+
+# Friends & Community
+
+Users can:
+
+* Add Friends
+* Follow Users
+* Like Activities
+* Comment
+* Share Activities
+* Create Groups
+* Join Clubs
+* View Friend Leaderboards
+
+---
+
+# Leaderboards
+
+Display:
+
+* Friends
+* City
+* Country
+* Global
+* Weekly
+* Monthly
+* All-Time
+
+---
+
+# Weather Integration
+
+Display:
+
+* Temperature
+* Humidity
+* Wind Speed
+* Air Quality
+* UV Index
+* Sunrise
+* Sunset
+* Rain Probability
+
+---
+
+# Offline Mode
+
+Users can:
+
+* Track workouts offline
+* Save locally
+* Sync automatically when internet returns
+
+---
+
+# Smartwatch Support
+
+Integrate with:
+
+* Google Fit
+* Apple Health
+* Fitbit
+* Garmin
+* Samsung Health
+* Wear OS
+* Apple Watch
+
+---
+
+# Notifications
+
+Send reminders for:
+
+* Daily Workout
+* Goal Progress
+* Achievement Unlocked
+* Friend Activity
+* Weekly Report
+* Challenges
+* AI Tips
+
+---
+
+# Admin Panel
+
+Create a complete admin dashboard with:
+
+* User Management
+* Activity Management
+* Challenge Management
+* Reports
+* Analytics
+* Notifications
+* Leaderboards
+* Banner Management
+* App Settings
+
+---
+
+# Technology Stack
+
+Frontend
+
+* Flutter
+* Material 3
+* Riverpod
+* GoRouter
+
+Backend
+
+* Firebase Authentication
+* Cloud Firestore
+* Firebase Storage
+* Cloud Functions
+* Firebase Cloud Messaging
+* Firebase Analytics
+* Crashlytics
+
+Maps
+
+* Google Maps SDK
+
+Fitness
+
+* GPS
+* Step Counter
+* Activity Recognition
+* Background Location
+
+Charts
+
+* FL Chart
+
+Architecture
+
+* Clean Architecture
+* MVVM
+* Repository Pattern
+
+---
+
+# UI Design
+
+Create a premium interface using:
+
+* Glassmorphism
+* Material 3
+* Beautiful gradients
+* Smooth animations
+* Hero transitions
+* Lottie animations
+* Rounded cards
+* Interactive maps
+* Dynamic charts
+* Dark Mode
+* Light Mode
+* Responsive layouts
+
+---
+
+# Performance Requirements
+
+* Accurate GPS tracking
+* Accurate step counting
+* Low battery usage
+* Real-time updates
+* Offline functionality
+* Cloud synchronization
+* Secure data storage
+* Fast startup
+* Smooth 60 FPS animations
+* Production-ready code
+
+---
+
+# Deliverables
+
+Generate a complete production-ready Flutter application with:
+
+* Clean Architecture
+* MVVM
+* Complete source code
+* Firebase integration
+* Google Maps
+* Real-time GPS tracking
+* Background activity tracking
+* Step counter
+* Social sharing
+* AI workout poster generator
+* Community features
+* Admin dashboard
+* Unit tests
+* Documentation
+* Android, iOS, and Web support
+
+The final product should deliver a premium experience that rivals leading fitness apps while establishing **Dokra – Fitness** as a distinctive, modern, and scalable fitness platform.

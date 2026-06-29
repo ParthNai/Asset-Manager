@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "G31x3sp6jInIKrrC1uCvF"
+uri = "file://artifacts/dokra-fitness/assets/images/icon.png"
+type = "image"
+title = "dokra fitness app icon"
