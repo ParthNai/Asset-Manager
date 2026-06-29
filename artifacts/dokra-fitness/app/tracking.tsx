@@ -22,7 +22,7 @@ import { formatDuration, formatDistance, formatPace } from "@/utils/format";
 import LiveMap from "@/components/LiveMap";
 
 const { height: SCREEN_H } = Dimensions.get("window");
-const MAP_HEIGHT = SCREEN_H * 0.42;
+const MAP_HEIGHT = Math.min(SCREEN_H * 0.36, 280);
 
 function calcDistanceMeters(
   lat1: number, lon1: number,
@@ -257,9 +257,9 @@ export default function TrackingScreen() {
         onClose={confirmStop}
       />
 
-      {/* ── STATS + CONTROLS ── */}
+      {/* ── STATS (scrollable middle) ── */}
       <View style={styles.statsPanel}>
-        {/* Timer */}
+        {/* Timer row */}
         <View style={styles.timerRow}>
           <View>
             <Text style={[styles.timerLabel, { color: colors.mutedForeground }]}>DURATION</Text>
@@ -273,32 +273,33 @@ export default function TrackingScreen() {
           </View>
         </View>
 
-        {/* Stats grid */}
+        {/* Stats — 3 per row so they stay compact */}
         <View style={styles.statsGrid}>
           <Metric icon="map-marker-distance" label="Distance" value={formatDistance(distanceKm)} unit="km" color={colors.distance} colors={colors} />
           <Metric icon="fire" label="Calories" value={Math.round(calories).toString()} unit="kcal" color={colors.calories} colors={colors} />
           <Metric icon="speedometer" label="Speed" value={displaySpeed.toFixed(1)} unit="km/h" color={colors.primary} colors={colors} />
-          <Metric icon="timer-outline" label="Avg Pace" value={formatPace(pace)} unit="/km" color={colors.time} colors={colors} />
+          <Metric icon="timer-outline" label="Pace" value={formatPace(pace)} unit="/km" color={colors.time} colors={colors} />
           {cfg.stepsPerKm > 0 && (
             <Metric icon="walk" label={pedometerAvailable.current ? "Steps" : "Steps (est.)"} value={(steps || Math.round(distanceKm * cfg.stepsPerKm)).toLocaleString()} unit="" color={colors.steps} colors={colors} />
           )}
         </View>
+      </View>
 
-        {/* Controls */}
-        <View style={[styles.controls, { paddingBottom: bottomPad + 12 }]}>
-          <TouchableOpacity
-            style={[styles.pauseBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={handlePause}
-          >
-            <MaterialCommunityIcons name={paused ? "play" : "pause"} size={24} color={colors.foreground} />
-            <Text style={[styles.pauseLabel, { color: colors.foreground }]}>{paused ? "Resume" : "Pause"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.stopBtn} onPress={confirmStop}>
-            <LinearGradient colors={["#EF4444", "#B91C1C"]} style={styles.stopGrad}>
-              <MaterialCommunityIcons name="stop" size={32} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+      {/* ── CONTROLS — always pinned at bottom ── */}
+      <View style={[styles.controls, { paddingBottom: bottomPad + 8, backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          style={[styles.pauseBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={handlePause}
+        >
+          <MaterialCommunityIcons name={paused ? "play" : "pause"} size={26} color={colors.foreground} />
+          <Text style={[styles.pauseLabel, { color: colors.foreground }]}>{paused ? "Resume" : "Pause"}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.stopBtn} onPress={confirmStop}>
+          <LinearGradient colors={["#EF4444", "#B91C1C"]} style={styles.stopGrad}>
+            <MaterialCommunityIcons name="stop" size={32} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -332,28 +333,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20,
   },
   typeLabel: { fontSize: 12, fontWeight: "600" },
-  statsPanel: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
-  timerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  statsPanel: { flex: 1, paddingHorizontal: 12, paddingTop: 10 },
+  timerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   timerLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 1 },
-  timer: { fontSize: 52, fontWeight: "800", letterSpacing: -1, fontVariant: ["tabular-nums"] },
+  timer: { fontSize: 44, fontWeight: "800", letterSpacing: -1, fontVariant: ["tabular-nums"] },
   liveBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#EF4444" },
   liveText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   metric: {
-    flex: 1, minWidth: "44%", borderRadius: 14, borderWidth: 1,
-    padding: 12, gap: 1,
+    width: "31%", flexGrow: 1, borderRadius: 12, borderWidth: 1,
+    padding: 10, gap: 1,
   },
-  metricValue: { fontSize: 20, fontWeight: "700", marginTop: 3 },
-  metricUnit: { fontSize: 11 },
-  metricLabel: { fontSize: 10, fontWeight: "500" },
-  controls: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginTop: "auto" },
+  metricValue: { fontSize: 17, fontWeight: "700", marginTop: 2 },
+  metricUnit: { fontSize: 10 },
+  metricLabel: { fontSize: 9, fontWeight: "500" },
+  controls: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 14, paddingHorizontal: 20, paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: "#E2E8F0",
+  },
   pauseBtn: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    paddingHorizontal: 20, paddingVertical: 14, borderRadius: 16, borderWidth: 1,
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 16, borderRadius: 18, borderWidth: 1,
   },
-  pauseLabel: { fontSize: 15, fontWeight: "600" },
-  stopBtn: { width: 68, height: 68, borderRadius: 34, overflow: "hidden" },
+  pauseLabel: { fontSize: 16, fontWeight: "700" },
+  stopBtn: { width: 64, height: 64, borderRadius: 32, overflow: "hidden" },
   stopGrad: { flex: 1, alignItems: "center", justifyContent: "center" },
 });
 
