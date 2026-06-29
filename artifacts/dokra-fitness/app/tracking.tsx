@@ -119,8 +119,8 @@ export default function TrackingScreen() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       setElapsed((e) => e + 1);
-      // Only count calories/pace time when actually moving (>0.5 m/s ≈ 1.8 km/h)
-      if (currentSpeedRef.current > 0.5) {
+      // Only count calories/pace time when GPS confirmed real movement (> 1 m/s)
+      if (currentSpeedRef.current > 1.0) {
         setMovingElapsed((e) => e + 1);
       }
     }, 1000);
@@ -142,10 +142,6 @@ export default function TrackingScreen() {
       },
       (loc) => {
         const { latitude, longitude, speed } = loc.coords;
-        if (speed !== null && speed >= 0) {
-          currentSpeedRef.current = speed;
-          setCurrentSpeed(speed);
-        }
         if (lastCoordRef.current) {
           const meters = calcDistanceMeters(
             lastCoordRef.current.lat,
@@ -153,9 +149,18 @@ export default function TrackingScreen() {
             latitude,
             longitude
           );
-          // Filter GPS noise — ignore jumps < 1m or > 50m per second
-          if (meters > 1 && meters < 50) {
+          // Real movement: > 2m and < 50m per update (filters GPS drift/noise)
+          if (meters > 2 && meters < 50) {
             setDistanceKm((prev) => prev + meters / 1000);
+            // Only update speed when we confirmed real physical movement
+            if (speed !== null && speed > 0) {
+              currentSpeedRef.current = speed;
+              setCurrentSpeed(speed);
+            }
+          } else if (meters <= 2) {
+            // Standing still — zero out the displayed speed
+            currentSpeedRef.current = 0;
+            setCurrentSpeed(0);
           }
         }
         lastCoordRef.current = { lat: latitude, lon: longitude };
@@ -166,8 +171,15 @@ export default function TrackingScreen() {
   }
 
   function stopGPS() {
-    locationSubRef.current?.remove();
+    try {
+      locationSubRef.current?.remove();
+    } catch (_) {
+      // expo-location subscription removal can throw on web
+    }
     locationSubRef.current = null;
+    // Reset speed to 0 when GPS stops
+    currentSpeedRef.current = 0;
+    setCurrentSpeed(0);
   }
 
   function cleanup() {
